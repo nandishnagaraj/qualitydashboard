@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>HCL Software – Quality Dashboard (Test CoE)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card-bg: #ffffff;
+      --primary: #0059b3;
+      --primary-light: #e6f0ff;
+      --text-main: #1f2933;
+      --text-muted: #6b7280;
+      --border: #d1d5db;
+      --green: #16a34a;
+      --amber: #f59e0b;
+      --red: #dc2626;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0b1220;
+      --card-bg: #0f172a;
+      --primary: #60a5fa;
+      --primary-light: #0b2a55;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --border: #1f2937;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text-main);
+    }
+
+    header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .brand-subtitle {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    main {
+      max-width: 1200px;
+      margin: 24px auto;
+      padding: 0 16px 32px;
+    }
+
+    .section {
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .input {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text-main);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .btn {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text-main);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .btn:hover { filter: brightness(1.05); }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 10px;
+      padding: 16px;
+      border: 1px solid var(--border);
+    }
+
+    .grid-two {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr);
+      gap: 16px;
+    }
+
+    .grid-three {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+    }
+
+    .kpi-card {
+      background: var(--card-bg);
+      border-radius: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+    }
+
+    .kpi-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .kpi-value {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .kpi-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+
+    th, td {
+      padding: 8px 6px;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    th {
+      background: var(--primary-light);
+      font-weight: 600;
+      font-size: 0.75rem;
+    }
+
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable .sort-ind { opacity: 0.6; font-size: 0.7rem; margin-left: 4px; }
+
+    tbody tr:hover {
+      background: #f9fafb;
+      cursor: pointer;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      margin-left: 6px;
+    }
+    .badge.green { background: #dcfce7; color: var(--green); }
+    .badge.amber { background: #fef3c7; color: var(--amber); }
+    .badge.red   { background: #fee2e2; color: var(--red); }
+
+    .meta-list {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 4px;
+      margin-top: 8px;
+    }
+
+    .meta-item span:first-child {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    #statusMessage, #debugMessage {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    #debugMessage {
+      font-style: italic;
+    }
+
+    @media (max-width: 900px) {
+      .grid-two {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <span class="brand-title">HCL Software – Quality Dashboard</span>
+    <span class="brand-subtitle">Test Center of Excellence</span>
+  </div>
+  <div class="toolbar" role="group" aria-label="Global controls">
+    <button id="themeToggle" class="btn" aria-pressed="false" aria-label="Toggle dark mode">🌙 Dark</button>
+  </div>
+</header>
+
+<main>
+  <!-- Portfolio KPIs -->
+  <section class="section">
+    <div class="section-title">Portfolio Overview</div>
+    <div id="statusMessage">Loading data from Google Sheet…</div>
+    <div id="debugMessage"></div>
+    <div class="grid-three" id="portfolioKpis"></div>
+  </section>
+
+  <!-- Portfolio table + chart -->
+  <section class="section grid-two">
+    <div class="card">
+      <div class="section-title">Projects Summary</div>
+      <div class="toolbar">
+        <input id="projectSearch" class="input" type="search" placeholder="Search by project, release, sprint…" aria-label="Search projects" />
+        <span style="font-size:0.8rem;color:var(--text-muted);">Click a row to see detailed metrics.</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table id="projectTable">
+          <thead>
+          <tr>
+            <th class="sortable" data-key="project">Project <span class="sort-ind">⇅</span></th>
+            <th class="sortable" data-key="release">Release <span class="sort-ind">⇅</span></th>
+            <th class="sortable" data-key="sprint">Sprint <span class="sort-ind">⇅</span></th>
+            <th class="sortable" data-key="executionProgress">Exec. Progress <span class="sort-ind">⇅</span></th>
+            <th class="sortable" data-key="passRate">Pass Rate <span class="sort-ind">⇅</span></th>
+            <th class="sortable" data-key="defectOpen">Open Defects <span class="sort-ind">⇅</span></th>
+            <th class="sortable" data-key="automationCoverage">Automation <span class="sort-ind">⇅</span></th>
+            <th class="sortable" data-key="requirementsCoverage">Req. Coverage <span class="sort-ind">⇅</span></th>
+            <th class="sortable" data-key="escapedDefects">Escaped Defects <span class="sort-ind">⇅</span></th>
+          </tr>
+          </thead>
+          <tbody>
+          <!-- Filled by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title">Pass Rate by Project</div>
+      <canvas id="passRateChart" height="200"></canvas>
+    </div>
+  </section>
+
+  <!-- Detailed project view -->
+  <section class="section">
+    <div class="card">
+      <div class="section-title" id="detailTitle">Project Detail</div>
+      <div class="meta-list" id="detailMeta">
+        <!-- Filled by JS -->
+      </div>
+      <div class="grid-three" id="detailKpis" style="margin-top:16px;">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Charts for selected project -->
+  <section class="section grid-two">
+    <div class="card">
+      <div class="section-title">Defect Severity Distribution</div>
+      <canvas id="detailSeverityChart" height="200"></canvas>
+    </div>
+    <div class="card">
+      <div class="section-title">Automation vs Manual</div>
+      <canvas id="detailAutomationChart" height="200"></canvas>
+    </div>
+  </section>
+</main>
+
+<script>
+  // --- CONFIG: Google Sheet CSV (personal account URL) ---
+  const SHEET_CSV_URL =
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vR4onxjKcN_Fa4qkQEJl79Z9lsovUUxametyEVdAH4ZUKb6J3Rgd5tG_4wj1tHNqiYCN908UhxYrSdn/pub?output=csv";
+
+  let projectsData = [];
+  let passRateChartInstance = null;
+  let detailSeverityChartInstance = null;
+  let detailAutomationChartInstance = null;
+  let currentFiltered = [];
+  let sortKey = null;
+  let sortDir = 'asc';
+
+  // --- Helpers ---
+
+  function parseCSV(text) {
+    const lines = text.split(/\r?\n/).filter(l => l.trim() !== "");
+    return lines.map(line => {
+      const result = [];
+      let current = "";
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === "," && !inQuotes) {
+          result.push(current.trim());
+          current = "";
+        } else {
+          current += char;
+        }
+      }
+      result.push(current.trim());
+      return result;
+    });
+  }
+
+  function csvToObjects(csvText) {
+    const rows = parseCSV(csvText);
+    const headers = rows.shift().map(h => h.trim());
+    // Normalize headers: lower-case, spaces/underscores unified
+    const normHeaders = headers.map(h => normalizeHeader(h));
+    return rows.map(row => {
+      const obj = {};
+      normHeaders.forEach((norm, i) => {
+        obj[norm] = row[i] ?? "";
+      });
+      return obj;
+    });
+  }
+
+  function normalizeHeader(h) {
+    return h.toLowerCase().replace(/\s+/g, "_"); // "Total Test Cases" -> "total_test_cases"
+  }
+
+  // helper to get a field with fallback names
+  function getField(obj, keys, def = "") {
+    for (const k of keys) {
+      if (obj[k] !== undefined && obj[k] !== "") return obj[k];
+    }
+    return def;
+  }
+
+  function toNumber(v, def = 0) {
+    if (v == null) return def;
+    const cleaned = String(v).replace(/%/g, "").trim();
+    const n = parseFloat(cleaned);
+    return isNaN(n) ? def : n;
+  }
+
+  function readinessBadge(score) {
+    let cls = "green", label = "Green";
+    if (score < 70 && score >= 50) {
+      cls = "amber";
+      label = "Amber";
+    } else if (score < 50) {
+      cls = "red";
+      label = "Red";
+    }
+    return { cls, label };
+  }
+
+  function computeReadiness(p) {
+    const passRate = p.passRate;
+    const openCritical = p.severityCritical;
+    const coverage = p.requirementsCoverage;
+    const critPenalty = Math.max(0, 5 - openCritical) / 5 * 100; // 0–100
+    return Math.max(0, Math.min(100,
+      0.5 * passRate + 0.3 * coverage + 0.2 * critPenalty
+    ));
+  }
+
+  // --- Rendering portfolio ---
+
+  function renderPortfolioKpis(data) {
+    const container = document.getElementById("portfolioKpis");
+    container.innerHTML = "";
+    if (!data.length) return;
+
+    const avgPassRate = data.reduce((s, p) => s + p.passRate, 0) / data.length;
+    const avgAutomation = data.reduce((s, p) => s + p.automationCoverage, 0) / data.length;
+    const avgReqCov = data.reduce((s, p) => s + p.requirementsCoverage, 0) / data.length;
+    const totalOpenDefects = data.reduce((s, p) => s + p.defectOpen, 0);
+    const totalEscaped = data.reduce((s, p) => s + p.escapedDefects, 0);
+    const avgReadiness = data.reduce((s, p) => s + p.readinessIndex, 0) / data.length;
+    const readiness = readinessBadge(avgReadiness);
+
+    const kpis = [
+      {
+        label: "Avg. Test Pass Rate",
+        value: avgPassRate.toFixed(1) + "%",
+        sub: "Across all projects"
+      },
+      {
+        label: "Avg. Automation Coverage",
+        value: avgAutomation.toFixed(1) + "%",
+        sub: "Regression suite"
+      },
+      {
+        label: "Avg. Requirements Coverage",
+        value: avgReqCov.toFixed(1) + "%",
+        sub: "Requirements with tests"
+      },
+      {
+        label: "Total Open Defects",
+        value: totalOpenDefects,
+        sub: "All projects"
+      },
+      {
+        label: "Total Escaped Defects",
+        value: totalEscaped,
+        sub: "UAT / Production"
+      },
+      {
+        label: "Avg. Release Readiness",
+        value: avgReadiness.toFixed(1) + "%",
+        sub: "Composite index",
+        badge: readiness
+      }
+    ];
+
+    kpis.forEach(k => {
+      const card = document.createElement("div");
+      card.className = "kpi-card";
+      card.innerHTML = `
+        <div class="kpi-label">${k.label}</div>
+        <div class="kpi-value">
+          ${k.value}
+          ${k.badge ? `<span class="badge ${k.badge.cls}">${k.badge.label}</span>` : ""}
+        </div>
+        <div class="kpi-sub">${k.sub}</div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function renderPortfolioTable(data) {
+    const tbody = document.querySelector("#projectTable tbody");
+    tbody.innerHTML = "";
+    data.forEach((p, idx) => {
+      const tr = document.createElement("tr");
+      tr.dataset.index = idx;
+      tr.innerHTML = `
+        <td>${p.project}</td>
+        <td>${p.release}</td>
+        <td>${p.sprint}</td>
+        <td>${p.executionProgress.toFixed(1)}%</td>
+        <td>${p.passRate.toFixed(1)}%</td>
+        <td>${p.defectOpen}</td>
+        <td>${p.automationCoverage.toFixed(1)}%</td>
+        <td>${p.requirementsCoverage.toFixed(1)}%</td>
+        <td>${p.escapedDefects}</td>
+      `;
+      tr.addEventListener("click", () => renderProjectDetail(p));
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderPassRateChart(data) {
+    const ctx = document.getElementById("passRateChart").getContext("2d");
+    if (passRateChartInstance) {
+      passRateChartInstance.destroy();
+    }
+    passRateChartInstance = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: data.map(p => p.project),
+        datasets: [{
+          label: "Pass Rate (%)",
+          data: data.map(p => p.passRate),
+          backgroundColor: data.map(() => 'rgba(37, 99, 235, 0.7)'),
+          borderColor: data.map(() => 'rgba(37, 99, 235, 1)'),
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true, max: 100 }
+        }
+      }
+    });
+  }
+
+  // --- Rendering project detail ---
+
+  function renderProjectDetail(p) {
+    document.getElementById("detailTitle").textContent =
+      `${p.project} – Detailed View`;
+    const metaDiv = document.getElementById("detailMeta");
+    metaDiv.innerHTML = `
+      <div class="meta-item"><span>Release: </span> <span>${p.release}</span></div>
+      <div class="meta-item"><span>Sprint: </span> <span>${p.sprint}</span></div>
+      <div class="meta-item"><span>Product Owner: </span> <span>${p.productOwner}</span></div>
+      <div class="meta-item"><span>Test Lead: </span> <span>${p.testLead}</span></div>
+    `;
+
+    const detailKpis = document.getElementById("detailKpis");
+    detailKpis.innerHTML = "";
+    const kpiDefs = [
+      {
+        label: "Total Test Cases",
+        value: p.totalTestCases,
+        sub: `Executed: ${p.executed}, Not run: ${p.notRun}`
+      },
+      {
+        label: "Pass / Fail / Blocked",
+        value: `${p.passCount}/${p.failCount}/${p.blockedCount}`,
+        sub: "Pass / Fail / Blocked"
+      },
+      {
+        label: "Test Pass Rate",
+        value: p.passRate.toFixed(1) + "%",
+        sub: `Execution Progress: ${p.executionProgress.toFixed(1)}%`
+      },
+      {
+        label: "Defects (Total/Open/Closed)",
+        value: `${p.defectTotal}/${p.defectOpen}/${p.defectClosed}`,
+        sub: `C/H/M/L: ${p.severityCritical}/${p.severityHigh}/${p.severityMedium}/${p.severityLow}`
+      },
+      {
+        label: "Automation Coverage",
+        value: p.automationCoverage.toFixed(1) + "%",
+        sub: "Regression suite"
+      },
+      {
+        label: "Requirements Coverage",
+        value: p.requirementsCoverage.toFixed(1) + "%",
+        sub: "Requirements with tests"
+      }
+    ];
+    kpiDefs.forEach(k => {
+      const card = document.createElement("div");
+      card.className = "kpi-card";
+      card.innerHTML = `
+        <div class="kpi-label">${k.label}</div>
+        <div class="kpi-value">${k.value}</div>
+        <div class="kpi-sub">${k.sub}</div>
+      `;
+      detailKpis.appendChild(card);
+    });
+
+    const sevCtx = document.getElementById("detailSeverityChart").getContext("2d");
+    if (detailSeverityChartInstance) detailSeverityChartInstance.destroy();
+    detailSeverityChartInstance = new Chart(sevCtx, {
+      type: "pie",
+      data: {
+        labels: ["Critical", "High", "Medium", "Low"],
+        datasets: [{
+          data: [p.severityCritical, p.severityHigh, p.severityMedium, p.severityLow]
+        }]
+      },
+      options: { responsive: true }
+    });
+
+    const autoCtx = document.getElementById("detailAutomationChart").getContext("2d");
+    if (detailAutomationChartInstance) detailAutomationChartInstance.destroy();
+    const automatedCount = Math.round(p.totalTestCases * (p.automationCoverage / 100));
+    const manualCount = Math.max(0, p.totalTestCases - automatedCount);
+    detailAutomationChartInstance = new Chart(autoCtx, {
+      type: "doughnut",
+      data: {
+        labels: ["Automated", "Manual"],
+        datasets: [{
+          data: [automatedCount, manualCount]
+        }]
+      },
+      options: { responsive: true }
+    });
+  }
+
+  // --- Initialization: load from Google Sheet ---
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    const statusEl = document.getElementById("statusMessage");
+    const debugEl = document.getElementById("debugMessage");
+    const themeToggle = document.getElementById("themeToggle");
+    const projectSearch = document.getElementById("projectSearch");
+
+    try {
+      statusEl.textContent = "Loading data from Google Sheet…";
+      const resp = await fetch(SHEET_CSV_URL);
+      if (!resp.ok) {
+        throw new Error(`Failed to fetch CSV: ${resp.status} ${resp.statusText}`);
+      }
+      const csv = await resp.text();
+      // Detect if the response is HTML (e.g., auth page) instead of CSV
+      if (/^\s*</.test(csv)) {
+        throw new Error("Received HTML instead of CSV. Ensure the Google Sheet is 'Published to the web' as CSV and accessible.");
+      }
+      const rows = csvToObjects(csv);
+
+      if (!rows.length) {
+        statusEl.textContent = "No data rows found in the sheet.";
+        return;
+      }
+
+      // Transform rows
+      projectsData = rows.map(r => {
+        // Field names using normalized headers
+        const project = getField(r, ["project"]);
+        if (!project) return null; // skip empty lines
+
+        const release = getField(r, ["release"]);
+        const productOwner = getField(r, ["product_owner"]);
+        const testLead = getField(r, ["test_lead"]);
+        const sprint = getField(r, ["sprint"]);
+
+        const total = toNumber(getField(r, ["total_test_cases"]));
+        const executed = toNumber(getField(r, ["executed"]));
+        const notRun = toNumber(getField(r, ["not_run"]));
+        const passCount = toNumber(getField(r, ["pass_count"]));
+        const failCount = toNumber(getField(r, ["fail_count"]));
+        const blockedCount = toNumber(getField(r, ["blocked_count"]));
+        const defectTotal = toNumber(getField(r, ["defect_total"]));
+        const defectOpen = toNumber(getField(r, ["defect_open"]));
+        const defectClosed = toNumber(getField(r, ["defect_closed"]));
+        const severityCritical = toNumber(getField(r, ["severity_critical"]));
+        const severityHigh = toNumber(getField(r, ["severity_high"]));
+        const severityMedium = toNumber(getField(r, ["severity_medium"]));
+        const severityLow = toNumber(getField(r, ["severity_low"]));
+        const automationCoverage = toNumber(getField(r, ["automation_coverage"]));
+        const requirementsCoverage = toNumber(getField(r, ["requirements_coverage"]));
+        const escapedDefects = toNumber(getField(r, ["escaped_defects"]));
+
+        const passRate = executed > 0 ? (passCount / executed) * 100 : 0;
+        const executionProgress = total > 0 ? (executed / total) * 100 : 0;
+
+        const obj = {
+          project,
+          release,
+          productOwner,
+          testLead,
+          sprint,
+          totalTestCases: total,
+          executed,
+          notRun,
+          passCount,
+          failCount,
+          blockedCount,
+          defectTotal,
+          defectOpen,
+          defectClosed,
+          severityCritical,
+          severityHigh,
+          severityMedium,
+          severityLow,
+          automationCoverage,
+          requirementsCoverage,
+          escapedDefects,
+          passRate,
+          executionProgress
+        };
+        obj.readinessIndex = computeReadiness(obj);
+        return obj;
+      }).filter(Boolean);
+
+      if (!projectsData.length) {
+        statusEl.textContent = "No valid project rows found after parsing.";
+        const preview = (csv.split(/\r?\n/).slice(0, 3).join(" | ")).slice(0, 300);
+        debugEl.textContent = "Preview first lines: " + preview + " | Tip: Ensure 'Project' column has values and headers are on the first row.";
+        return;
+      }
+
+      const names = projectsData.map(p => p.project).join(", ");
+      statusEl.textContent = "Data loaded successfully.";
+      debugEl.textContent = `Loaded ${projectsData.length} projects: ${names}`;
+
+      currentFiltered = [...projectsData];
+      renderAll(currentFiltered);
+
+      // Search handler
+      if (projectSearch) {
+        projectSearch.addEventListener('input', () => {
+          const q = projectSearch.value.toLowerCase().trim();
+          currentFiltered = projectsData.filter(p =>
+            [p.project, p.release, p.sprint]
+              .map(v => String(v || '').toLowerCase())
+              .some(v => v.includes(q))
+          );
+          applySort();
+          renderAll(currentFiltered);
+        });
+      }
+
+      // Sorting handlers
+      document.querySelectorAll('#projectTable thead th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+          const key = th.getAttribute('data-key');
+          if (sortKey === key) {
+            sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortKey = key;
+            sortDir = 'asc';
+          }
+          applySort();
+          renderAll(currentFiltered);
+        });
+      });
+
+      // Theme toggle
+      const savedTheme = localStorage.getItem('qd-theme') || 'light';
+      setTheme(savedTheme);
+      if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+          const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+          setTheme(next);
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      statusEl.textContent = "Error loading data: " + e.message;
+      debugEl.textContent = "";
+    }
+  });
+
+  function renderAll(data) {
+    renderPortfolioKpis(data);
+    renderPortfolioTable(data);
+    renderPassRateChart(data);
+    if (data.length) renderProjectDetail(data[0]);
+  }
+
+  function applySort() {
+    if (!sortKey) return;
+    const dir = sortDir === 'asc' ? 1 : -1;
+    currentFiltered.sort((a, b) => {
+      const va = a[sortKey];
+      const vb = b[sortKey];
+      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+      return String(va).localeCompare(String(vb)) * dir;
+    });
+  }
+
+  function setTheme(mode) {
+    document.documentElement.setAttribute('data-theme', mode === 'dark' ? 'dark' : 'light');
+    const btn = document.getElementById('themeToggle');
+    if (btn) {
+      if (mode === 'dark') {
+        btn.textContent = '☀️ Light';
+        btn.setAttribute('aria-pressed', 'true');
+      } else {
+        btn.textContent = '🌙 Dark';
+        btn.setAttribute('aria-pressed', 'false');
+      }
+    }
+    localStorage.setItem('qd-theme', mode);
+  }
+</script>
+
+</body>
+</html>
