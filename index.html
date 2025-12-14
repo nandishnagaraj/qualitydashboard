@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Melento - SignDesk</title>
+  <title>HCL Software – Quality Dashboard (Test CoE)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -183,6 +183,11 @@
       cursor: pointer;
     }
 
+    tfoot th, tfoot td {
+      background: rgba(148, 163, 184, 0.12);
+      font-weight: 600;
+    }
+
     .badge {
       display: inline-flex;
       align-items: center;
@@ -230,8 +235,8 @@
 <body>
 <header>
   <div class="brand">
-    <span class="brand-title">Melento - SignDesk</span>
-    <span class="brand-subtitle">Quality Dashboard</span>
+    <span class="brand-title">HCL Software – Quality Dashboard</span>
+    <span class="brand-subtitle">Test Center of Excellence</span>
   </div>
   <div class="toolbar" role="group" aria-label="Global controls">
     <button id="themeToggle" class="btn" aria-pressed="false" aria-label="Toggle dark mode">🌙 Dark</button>
@@ -273,6 +278,20 @@
           <tbody>
           <!-- Filled by JS -->
           </tbody>
+          <!-- NEW: Average row -->
+          <tfoot>
+          <tr>
+            <th>Average</th>
+            <th>–</th>
+            <th>–</th>
+            <th id="avgExec">–</th>
+            <th id="avgPass">–</th>
+            <th id="avgOpenDef">–</th>
+            <th id="avgAuto">–</th>
+            <th id="avgReq">–</th>
+            <th id="avgEscaped">–</th>
+          </tr>
+          </tfoot>
         </table>
       </div>
     </div>
@@ -393,7 +412,7 @@
   function computeReadiness(p) {
     const passRate = p.passRate;
     const openCritical = p.severityCritical;
-    const coverage = p.requirementsCoverage;
+       const coverage = p.requirementsCoverage;
     const critPenalty = Math.max(0, 5 - openCritical) / 5 * 100; // 0–100
     return Math.max(0, Math.min(100,
       0.5 * passRate + 0.3 * coverage + 0.2 * critPenalty
@@ -484,6 +503,40 @@
       tr.addEventListener("click", () => renderProjectDetail(p));
       tbody.appendChild(tr);
     });
+  }
+
+  // NEW: render per-column averages in the footer
+  function renderPortfolioAverages(data) {
+    const setText = (id, value) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = value;
+    };
+
+    if (!data.length) {
+      setText("avgExec", "–");
+      setText("avgPass", "–");
+      setText("avgOpenDef", "–");
+      setText("avgAuto", "–");
+      setText("avgReq", "–");
+      setText("avgEscaped", "–");
+      return;
+    }
+
+    const n = data.length;
+    const avgExec = data.reduce((s, p) => s + p.executionProgress, 0) / n;
+    const avgPass = data.reduce((s, p) => s + p.passRate, 0) / n;
+    const avgOpen = data.reduce((s, p) => s + p.defectOpen, 0) / n;
+    const avgAuto = data.reduce((s, p) => s + p.automationCoverage, 0) / n;
+    const avgReq  = data.reduce((s, p) => s + p.requirementsCoverage, 0) / n;
+    const avgEsc  = data.reduce((s, p) => s + p.escapedDefects, 0) / n;
+
+    setText("avgExec", avgExec.toFixed(1) + "%");
+    setText("avgPass", avgPass.toFixed(1) + "%");
+    setText("avgOpenDef", avgOpen.toFixed(1));
+    setText("avgAuto", avgAuto.toFixed(1) + "%");
+    setText("avgReq", avgReq.toFixed(1) + "%");
+    setText("avgEscaped", avgEsc.toFixed(1));
   }
 
   function renderPassRateChart(data) {
@@ -627,7 +680,6 @@
 
       // Transform rows
       projectsData = rows.map(r => {
-        // Field names using normalized headers
         const project = getField(r, ["project"]);
         if (!project) return null; // skip empty lines
 
@@ -747,6 +799,7 @@
   function renderAll(data) {
     renderPortfolioKpis(data);
     renderPortfolioTable(data);
+    renderPortfolioAverages(data); // NEW: update average row
     renderPassRateChart(data);
     if (data.length) renderProjectDetail(data[0]);
   }
